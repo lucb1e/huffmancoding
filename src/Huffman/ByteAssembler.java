@@ -68,7 +68,7 @@ final class ByteAssembler {
      * not close the OutputStream.
      *
      * @throws IOException If we fail to write to the OutputStream
-     * @return The number of bits written (excess zeros = 8-returnvalue)
+     * @return The number of padded zero bits
      */
     public int flush() throws IOException {
         if (currentbytesize == 0) {
@@ -80,6 +80,6 @@ final class ByteAssembler {
         int tmp = currentbytesize;
         currentbytesize = 0;
         output.flush();
-        return tmp;
+        return 8 - tmp;
     }
 }

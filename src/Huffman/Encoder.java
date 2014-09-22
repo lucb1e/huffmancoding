@@ -7,6 +7,7 @@
 package Huffman;
 
 import java.io.BufferedInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -82,35 +83,36 @@ public class Encoder {
 
         buildTree();
 
-        outputHeader(output);
+        // We use a DataOutputStream for this because it can write longs as 8-byte values instead of their string representation
+        DataOutputStream dos = new DataOutputStream(output);
+        outputHeader(dos, countedCharacters.peek());
+        
+        // Write a byte with count 0 as a means of denoting end-of-header
+        // Too bad this takes 8 bytes, but hey no variable-length numbers in Java..!
+        dos.write(0);
+        dos.writeLong(0);
+        
+        dos.flush();
 
         performEncoding(output);
     }
 
     /**
-     * Outputs our custom Huffman header to the outputstream
+     * Outputs our custom Huffman header to the outputstream. Recursive
+     * function.
      *
-     * @param output Where to write the header to
+     * @param dos Where to write the header to
+     * @param character The root character (or the one to go down from)
      * @throws IOException when we fail to write to the output
      */
-    private void outputHeader(OutputStream output) throws IOException {
-        int[] header = new int[256];
-        int headerlen = 0;
-        for (CountedCharacter cc : countedCharacters) {
-            if (cc.getFrequency() == 0) {
-                break;
-            }
-
-            header[headerlen] = cc.getCharacter();
-            headerlen++;
+    private void outputHeader(DataOutputStream dos, CountedCharacter character) throws IOException {
+        if (character.hasCharacter()) {
+            dos.write(character.getCharacter());
+            dos.writeLong(character.getFrequency()); // Since Java has no obvious way of doing variable-size numbers and I don't feel like coding it myself right now...
         }
-
-        // Write the length of our header (one byte as it's never more than 256).
-        output.write(headerlen);
-
-        // We don't want to write the whole header as that would include the allocated but unused bytes
-        for (int j = 0; j < headerlen; j++) {
-            output.write(header[j]);
+        else {
+            outputHeader(dos, character.getLeft());
+            outputHeader(dos, character.getRight());
         }
     }
 
