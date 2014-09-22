@@ -27,7 +27,7 @@ public class Encoder {
     /**
      * Contains the tree with characters and frequency counts
      */
-    private TreeSet<CountedCharacter> countedCharacters;
+    private PriorityQueue<CountedCharacter> countedCharacters;
 
     /**
      * A lookup table for the data. Retrieve an element with
@@ -119,47 +119,68 @@ public class Encoder {
      * O(1) lookups
      */
     private void buildTree() {
-        countedCharacters = new TreeSet(new Comparator<CountedCharacter>() {
+        countedCharacters = new PriorityQueue<>(new Comparator<CountedCharacter>() {
             @Override
-            public int compare(CountedCharacter a, CountedCharacter b) {
-                if (a.getFrequency() > b.getFrequency()) {
+            public int compare(CountedCharacter o1, CountedCharacter o2) {
+                if (o1.getFrequency() > o2.getFrequency()) {
+                    return 1;
+                } else if (o1.getFrequency() < o2.getFrequency()) {
                     return -1;
                 }
-                return 1;
-                // Never return 0 or it'll remove duplicates
+                return 0;
             }
         });
 
-        if (debug) {
-            System.err.println("Filling the Huffman tree with counts");
-        }
-
-        CountedCharacter cc;
-        for (int b = 0; b < 256; b++) {
-            cc = new CountedCharacter(b, frequencies[b]);
-            countedCharacters.add(cc);
-        }
-
-        if (debug) {
-            System.err.println("Filling the lookup table");
-        }
-
-        int i = 0;
-        boolean last = false;
-        for (CountedCharacter countedchar : countedCharacters) {
-            if (countedchar == countedCharacters.last()) {
-                last = true;
+        for (int i = 0; i < 256; i++) {
+            if (frequencies[i] > 0) {
+                countedCharacters.add(new CountedCharacter(i, frequencies[i]));
             }
-            lookup[countedchar.getCharacter()] = new int[i + (last ? 0 : 1)];
-            for (int n = 0; n < i; n++) {
-                lookup[countedchar.getCharacter()][n] = 1;
-            }
-            // No need to add the final zero as the default value of a byte is 0
-            i++;
         }
 
         if (debug) {
-            System.err.println("Finished filling lookup table");
+            System.err.println("Building the tree...");
+        }
+
+        while (countedCharacters.size() > 1) {
+            countedCharacters.add(new CountedCharacter(countedCharacters.poll(), countedCharacters.poll()));
+        }
+
+        if (debug) {
+            System.err.println("Tree built; generating lookup table");
+        }
+
+        rundown(countedCharacters.peek(), "");
+
+        if (debug) {
+            for (int i = 0; i < 256; i++) {
+                if (lookup[i] != null) {
+                    System.err.print(i + " = ");
+                    for (int j = 0; j < lookup[i].length; j++) {
+                        System.err.print(lookup[i][j]);
+                    }
+                    System.err.println();
+                }
+            }
+        }
+    }
+
+    /**
+     * Run down the character tree, exhausting all possibilities, adding them to
+     * the lookup table. Recursive function.
+     *
+     * @param character the character where to run down from (treated as root)
+     */
+    private void rundown(CountedCharacter character, String prefix) {
+        if (character.hasCharacter()) {
+            int c = character.getCharacter();
+            lookup[c] = new int[prefix.length()];
+            char[] chars = prefix.toCharArray();
+            for (int i = 0; i < chars.length; i++) {
+                lookup[c][i] = chars[i] == '0' ? 0 : 1;
+            }
+        } else {
+            rundown(character.getLeft(), prefix + "0");
+            rundown(character.getRight(), prefix + "1");
         }
     }
 
