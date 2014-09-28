@@ -13,7 +13,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Comparator;
 import java.util.PriorityQueue;
-import java.util.TreeSet;
 
 /**
  * The main encoder class; used to encode data in Huffman coding

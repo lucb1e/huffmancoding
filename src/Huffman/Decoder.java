@@ -122,7 +122,6 @@ public class Decoder {
         byte[] readbuffer = new byte[buffsize];
         CountedCharacter root = countedCharacters.peek();
         CountedCharacter currentCC = root;
-        String debugbitbuffer = "";
         do {
             int readbytes = input.read(readbuffer, 0, buffsize);
             if (readbytes == -1) {
@@ -130,29 +129,19 @@ public class Decoder {
             }
 
             for (int i = 0; i < readbytes; i++) {
-                if (debug) {
-                    System.err.println(readbuffer[i]);
-                }
                 for (int bitpos = 7; bitpos >= 0; bitpos--) {
                     if (((readbuffer[i] >> bitpos) & 1) != 1) {
-                        if (debug) {
-                            debugbitbuffer += "0";
-                        }
                         currentCC = currentCC.getLeft();
                     } else {
-                        if (debug) {
-                            debugbitbuffer += "1";
-                        }
                         currentCC = currentCC.getRight();
                     }
                     if (currentCC.hasCharacter()) {
                         bof.write(currentCC.getCharacter());
-                        if (debug) {
-                            System.err.println("Found character " + currentCC.getCharacter() + " after reading " + debugbitbuffer);
-                            debugbitbuffer = "";
-                        }
                         currentCC = root;
                         outputtedCharacters++;
+                        if (outputtedCharacters >= filesize) {
+                            break;
+                        }
                     }
                 }
             }
