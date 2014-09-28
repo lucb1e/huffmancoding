@@ -39,6 +39,8 @@ public class Decoder {
      */
     private final boolean debug;
 
+    private long filesize;
+
     /**
      * Decodes Huffman coded data
      *
@@ -51,6 +53,7 @@ public class Decoder {
     public Decoder(InputStream input, OutputStream output, boolean debug) throws IOException {
         this.debug = debug;
         this.input = input;
+        filesize = 0;
         frequencies = new long[256];
 
         parseHeader();
@@ -70,7 +73,7 @@ public class Decoder {
             }
             if (count == 0) {
                 if (character != 0) {
-                    throw new IllegalArgumentException("Invalid header data");
+                    throw new IllegalArgumentException("Invalid header data (zero count for a non-zero byte index)");
                 }
                 if (debug) {
                     System.err.println("Zero-count character detected - that means we've reached the end of the header");
@@ -78,6 +81,7 @@ public class Decoder {
                 break; // End of header is denoted by a 0-count character
             }
             frequencies[character] = count;
+            filesize += count;
         } while (true);
     }
 
@@ -113,66 +117,46 @@ public class Decoder {
     }
 
     private void performDecoding(BufferedOutputStream bof) throws IOException {
+        long outputtedCharacters = 0;
         int buffsize = 4096;
-        int readblock = 1024;
-        byte[] readbuffer = new byte[readblock];
-        boolean[] bitbuffer = new boolean[buffsize * 8];
-        int bitbufferwriteptr = 0;
-        int bitbufferreadptr = 0;
-        int bitsavailable = 0;
-        int lastbyte = 0;
-        int keepbits = 256; // How many bits to keep available
-        CountedCharacter currentCC = null;
+        byte[] readbuffer = new byte[buffsize];
+        CountedCharacter root = countedCharacters.peek();
+        CountedCharacter currentCC = root;
         String debugbitbuffer = "";
         do {
-            int readbytes = input.read(readbuffer, 0, readblock);
+            int readbytes = input.read(readbuffer, 0, buffsize);
             if (readbytes == -1) {
-                bitsavailable -= lastbyte + 8; // The last byte tells us how many bits are padding
-                keepbits = 0;
+                throw new IllegalArgumentException("End of byte stream before end of file");
+            }
+
+            for (int i = 0; i < readbytes; i++) {
                 if (debug) {
-                    System.err.println("Found end of stream! Excess bits: " + lastbyte);
-                    System.err.println("Bits remaining: " + bitsavailable);
+                    System.err.println(readbuffer[i]);
                 }
-            } else {
-                bitsavailable += readbytes * 8;
-                lastbyte = readbuffer[readbytes - 1];
-                for (int i = 0; i < readbytes; i++) {
-                    for (int bitpos = 7; bitpos >= 0; bitpos--) {
-                        bitbuffer[bitbufferwriteptr] = ((readbuffer[i] >> bitpos) & 1) == 1;
-                        bitbufferwriteptr = (bitbufferwriteptr + 1) % (buffsize * 8);
+                for (int bitpos = 7; bitpos >= 0; bitpos--) {
+                    if (((readbuffer[i] >> bitpos) & 1) != 1) {
+                        if (debug) {
+                            debugbitbuffer += "0";
+                        }
+                        currentCC = currentCC.getLeft();
+                    } else {
+                        if (debug) {
+                            debugbitbuffer += "1";
+                        }
+                        currentCC = currentCC.getRight();
+                    }
+                    if (currentCC.hasCharacter()) {
+                        bof.write(currentCC.getCharacter());
+                        if (debug) {
+                            System.err.println("Found character " + currentCC.getCharacter() + " after reading " + debugbitbuffer);
+                            debugbitbuffer = "";
+                        }
+                        currentCC = root;
+                        outputtedCharacters++;
                     }
                 }
             }
-            while (bitsavailable > keepbits) {
-                if (currentCC == null) {
-                    currentCC = countedCharacters.peek();
-                }
-                if (!bitbuffer[bitbufferreadptr]) {
-                    if (debug) {
-                        debugbitbuffer += "1";
-                    }
-                    currentCC = currentCC.getLeft();
-                } else {
-                    if (debug) {
-                        debugbitbuffer += "0";
-                    }
-                    currentCC = currentCC.getRight();
-                }
-                if (currentCC.hasCharacter()) {
-                    bof.write(currentCC.getCharacter());
-                    if (debug) {
-                        System.err.println("Found character " + currentCC.getCharacter() + " after reading " + debugbitbuffer);
-                        debugbitbuffer = "";
-                    }
-                    currentCC = null;
-                }
-                bitsavailable--;
-                bitbufferreadptr = (bitbufferreadptr + 1) % (buffsize * 8);
-            }
-            if (bitsavailable == 0) {
-                break;
-            }
-        } while (true);
+        } while (outputtedCharacters < filesize);
         bof.flush();
     }
 

@@ -240,8 +240,7 @@ public class Encoder {
             assembler.writeBits(lookup[b]);
         } while (true);
 
-        int excess = assembler.flush();
-        output.write(excess); // Add how many excess zeros are in the file.
+        assembler.flush();
 
         if (debug) {
             System.err.println("Finished encoding (also flushed assembler)!");
