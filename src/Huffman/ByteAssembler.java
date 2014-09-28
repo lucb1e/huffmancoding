@@ -30,6 +30,8 @@ final class ByteAssembler {
      * How many bits of this byte we already wrote
      */
     private int currentbytesize;
+    
+    private final int[] powLookup;
 
     /**
      * Assembles whole bytes from individual bits.
@@ -40,6 +42,11 @@ final class ByteAssembler {
         this.output = new BufferedOutputStream(output);
         currentbyte = 0;
         currentbytesize = 0;
+        powLookup = new int[8];
+        
+        for (int i = 0; i < 8; i++) {
+            powLookup[i] = (int)Math.pow(2, i);
+        }
     }
 
     /**
@@ -51,7 +58,7 @@ final class ByteAssembler {
     public void writeBits(int[] bitarray) throws IOException {
         for (int bit : bitarray) {
             if (bit == 1) {
-                currentbyte += Math.pow(2, 8 - currentbytesize - 1);
+                currentbyte += powLookup[8 - currentbytesize - 1];
             }
             currentbytesize++;
 
