@@ -66,6 +66,8 @@ public class Encoder {
      * so it is not advised to use the inputstream's mark() method.
      * @param output Where the encoded data is written to
      * @param debug Whether to write debug information to stderr
+     * @throws IOException When we can't read/write from/to your
+     * Input/OutputStream
      */
     public Encoder(InputWorkaround input, OutputStream output, boolean debug) throws IOException {
         this.input = new BufferedInputStream(input.getInput());
@@ -86,12 +88,12 @@ public class Encoder {
         // We use a DataOutputStream for this because it can write longs as 8-byte values instead of their string representation
         DataOutputStream dos = new DataOutputStream(output);
         outputHeader(dos, countedCharacters.peek());
-        
+
         // Write a byte with count 0 as a means of denoting end-of-header
         // Too bad this takes 8 bytes, but hey no variable-length numbers in Java..!
         dos.write(0);
         dos.writeLong(0);
-        
+
         dos.flush();
 
         performEncoding(output);
@@ -109,8 +111,7 @@ public class Encoder {
         if (character.hasCharacter()) {
             dos.write(character.getCharacter());
             dos.writeLong(character.getFrequency()); // Since Java has no obvious way of doing variable-size numbers and I don't feel like coding it myself right now...
-        }
-        else {
+        } else {
             outputHeader(dos, character.getLeft());
             outputHeader(dos, character.getRight());
         }

@@ -82,8 +82,7 @@ public class Decoder {
     }
 
     /**
-     * Builds the Huffman tree (temporary copy, should be replaced with a
-     * general function)
+     * Builds the Huffman tree from the frequency count
      */
     private void buildTree() {
         countedCharacters = new PriorityQueue<>(new Comparator<CountedCharacter>() {
