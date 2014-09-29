@@ -118,7 +118,7 @@ public class Decoder {
 
     private void performDecoding(BufferedOutputStream bof) throws IOException {
         long outputtedCharacters = 0;
-        int buffsize = 4096;
+        int buffsize = 2048;
         byte[] readbuffer = new byte[buffsize];
         CountedCharacter root = countedCharacters.peek();
         CountedCharacter currentCC = root;
