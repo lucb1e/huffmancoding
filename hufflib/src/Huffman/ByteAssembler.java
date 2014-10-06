@@ -24,7 +24,10 @@ final class ByteAssembler {
      * How many bits of this byte we already wrote
      */
     private int currentbytesize;
-    
+
+    /**
+     * Using a lookup table for pow() makes encoding 4x faster
+     */
     private final int[] powLookup;
 
     /**
